@@ -1,0 +1,36 @@
+# Microservicio administrador de RabbitMQ
+spring:
+  application:
+    name: ms-campuslab-mq-admin
+
+  # --- RabbitMQ ---
+  # Para un clúster con varios nodos: SPRING_RABBITMQ_ADDRESSES=host1:5672,host2:5672 (reemplaza host/port)
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:campuslab}
+    password: ${RABBITMQ_PASS:campuslab}
+
+  # --- Seguridad: validación del JWT emitido por Azure AD ---
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # Se configura por variable de entorno (TENANT_ID de Azure AD)
+          issuer-uri: https://login.microsoftonline.com/${TENANT_ID:changeme}/v2.0
+
+# Documentación de la API: http://localhost:8085/swagger-ui.html
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+
+# Puerto del servicio (BFF 8080, bookings 8081, catalog 8082, report 8083, notify 8084)
+server:
+  port: ${SERVER_PORT:8085}
+
+logging:
+  level:
+    org.campuslab.mqadmin: INFO
