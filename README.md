@@ -110,3 +110,4 @@ mvn test
 
 Los tests unitarios y de capa web no necesitan broker. `RabbitAdminBrokerTest` prueba la API contra un RabbitMQ real y se omite solo si no hay uno en `localhost:5672` (`docker compose up -d` en `campuslab-infra/mq`).
 # ms-campuslab-mq-admin
+# ms-campuslab-mq-admin
