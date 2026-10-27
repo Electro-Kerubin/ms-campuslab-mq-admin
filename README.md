@@ -33,7 +33,7 @@ Base: `/api/mq` · todos requieren `Authorization: Bearer <JWT>` con el rol `ADM
 | `POST` | `/bindings` | Enlaza cola ↔ exchange con una routing key (idempotente) | `201` | `400` · `404` cola/exchange inexistente |
 | `DELETE` | `/bindings?queue=&exchange=&routingKey=` | Elimina el binding (idempotente: si ya no existe, también `204`) | `204` | `400` · `404` cola/exchange inexistente |
 
-Sin token `401`; con token sin rol `ADMIN` `403`; RabbitMQ caído `503`.
+Sin token `401`; con token sin rol `ADMIN` `403`; RabbitMQ caído `503`. Errores del cliente que detecta Spring: tipo de contenido que no es JSON `415`, verbo no permitido `405`, ruta inexistente `404` (nunca un `500`).
 
 > Por AMQP RabbitMQ **no permite listar** colas ni exchanges ni leer su configuración (solo el estado de una cola concreta). Para eso existe la Management UI (`:15672`).
 

@@ -11,6 +11,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -258,5 +259,33 @@ class QueueControllerTest {
                 .andExpect(status().isForbidden());
 
         verify(service, never()).deleteQueue(eq("q.cmd.email"));
+    }
+
+    // ---------- Errores del cliente que detecta Spring: no son 500 ----------
+
+    @Test
+    void unTipoDeContenidoQueNoEsJsonDevuelve415EnVezDe500() throws Exception {
+        mockMvc.perform(post("/api/mq/queues").with(admin()).contentType(MediaType.TEXT_PLAIN).content("name=q.a"))
+                .andExpect(status().isUnsupportedMediaType())
+                .andExpect(jsonPath("$.status").value(415))
+                .andExpect(jsonPath("$.message").value("Tipo de contenido no soportado: la API recibe application/json"));
+
+        verifyNoInteractions(service);
+    }
+
+    @Test
+    void unVerboNoPermitidoDevuelve405EnVezDe500() throws Exception {
+        mockMvc.perform(put("/api/mq/queues").with(admin()).contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isMethodNotAllowed())
+                .andExpect(jsonPath("$.status").value(405));
+
+        verifyNoInteractions(service);
+    }
+
+    @Test
+    void unaRutaInexistenteDevuelve404EnVezDe500() throws Exception {
+        mockMvc.perform(get("/api/mq/no-existe").with(admin()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("Ruta no encontrada"));
     }
 }

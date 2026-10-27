@@ -1,5 +1,6 @@
 package org.campuslab.mqadmin.exception;
 
+import jakarta.servlet.ServletException;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -7,6 +8,7 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
@@ -55,6 +57,26 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleUnreadable(HttpMessageNotReadableException ex) {
         return build(HttpStatus.BAD_REQUEST,
                 "El cuerpo de la petición no es un JSON válido o tiene un valor no permitido (por ejemplo un tipo desconocido)");
+    }
+
+    // Errores de la capa web que Spring ya clasifica con su propio código: verbo no permitido (405), tipo de contenido que no
+    // es JSON (415), ruta inexistente (404), parámetro obligatorio ausente (400)... Son errores del cliente, no del servidor:
+    // sin este handler caían en el 500 genérico de abajo.
+    @ExceptionHandler(ServletException.class)
+    public ResponseEntity<Map<String, Object>> handleWebError(ServletException ex) {
+        HttpStatusCode status = ex instanceof org.springframework.web.ErrorResponse web
+                ? web.getStatusCode() : HttpStatus.INTERNAL_SERVER_ERROR;
+        String message = switch (status.value()) {
+            case 404 -> "Ruta no encontrada";
+            case 405 -> "Método HTTP no permitido para esta ruta";
+            case 415 -> "Tipo de contenido no soportado: la API recibe application/json";
+            default -> "La petición no es válida";
+        };
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("timestamp", LocalDateTime.now());
+        body.put("status", status.value());
+        body.put("message", message);
+        return ResponseEntity.status(status).body(body);
     }
 
     // ---------- Reglas del recurso ----------
