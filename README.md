@@ -61,6 +61,40 @@ curl -X DELETE "localhost:8085/api/mq/bindings?queue=q.cmd.email&exchange=cmd.di
 curl -X DELETE localhost:8085/api/mq/queues/q.cmd.email -H "$H"
 ```
 
+## Exchanges `direct` y `topic`: cuándo se usa cada uno
+
+CampusLab usa los dos tipos, cada uno para lo que mejor resuelve:
+
+| | `cmd.direct` (DIRECT) | `cmd.topic` (TOPIC) |
+|---|---|---|
+| Regla de enrutamiento | La routing key del mensaje debe ser **igual** a la del binding | La routing key se compara con un **patrón**: `*` = exactamente una palabra, `#` = cero o más |
+| Caso de uso en CampusLab | **Comandos punto a punto**: un solo destino por mensaje | **Familias de mensajes con subtipos**, que pueden interesar a más de una cola |
+| Quién publica | `ms-campuslab-bookings`: email y preparación | `ms-campuslab-bookings`: voucher |
+| Rutas | `email.send` → `q.cmd.email` · `prep.ticket` → `q.cmd.prep` · `voucher.gen` → `q.cmd.voucher` | `voucher.*` → `q.cmd.voucher` · `prep.#` → `q.cmd.prep` · `email.*` → `q.cmd.email` |
+
+**Ejemplo real (voucher).** Al pasar una reserva a *EN USO* se publica `voucher.retiro` y al devolverla `voucher.devolucion`, ambas al exchange `cmd.topic`.
+La cola `q.cmd.voucher`, enlazada con `voucher.*`, recibe las dos y notify genera el PDF correspondiente. Si además alguien necesita guardar
+solo las actas, se crea otra cola enlazada **únicamente** a `voucher.devolucion`: la misma publicación llega a las dos colas y el `voucher.retiro` solo a la primera.
+Con un exchange `direct` habría que publicar el mensaje dos veces.
+
+Todo se arma con esta API, sin tocar el código de bookings:
+
+```bash
+curl -X POST localhost:8085/api/mq/queues   -H "$H" -H 'Content-Type: application/json' -d '{"name":"q.actas.archivo"}'
+curl -X POST localhost:8085/api/mq/bindings -H "$H" -H 'Content-Type: application/json'      -d '{"queue":"q.actas.archivo","exchange":"cmd.topic","routingKey":"voucher.devolucion"}'
+```
+
+Cómo se comporta cada patrón (comprobado contra el clúster de AWS):
+
+| Exchange | Routing key publicada | ¿Se enruta? | Por qué |
+|---|---|---|---|
+| direct | `email.send` | sí | clave exacta |
+| direct | `email.otra` | **no** | direct no admite patrones |
+| topic | `prep.ticket` · `prep.sala.urgente` | sí | `prep.#` cubre una o varias palabras |
+| topic | `voucher.retiro` | sí, a `voucher.*` | `*` = una palabra |
+| topic | `voucher.devolucion` | sí, a **dos** colas | `voucher.*` y `voucher.devolucion` coinciden |
+| topic | `voucher.a.b` | **no** | `*` no cubre dos palabras |
+
 ## Validación de la entrada
 
 Nada llega al broker sin pasar por estas reglas (respuesta `400` con el detalle por campo):
