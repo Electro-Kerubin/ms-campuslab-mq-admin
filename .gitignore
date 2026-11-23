@@ -39,3 +39,9 @@ build/
 .DS_Store
 ### Secrets locales (copiar .env.example a .env; nunca versionar) ###
 .env
+
+### Archivos locales del entorno de desarrollo (no van al repositorio) ###
+.idea/
+.claude/
+*.log
+.env
